@@ -7,12 +7,10 @@
 \usepackage{textcomp}
 \usepackage[hyphens]{url} % not crucial - just used below for the URL
 \usepackage{hyperref}
-\providecommand{\tightlist}{%
-  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 
 %\pdfminorversion=4
 % NOTE: To produce blinded version, replace "0" with "1" below.
-\newcommand{\blind}{0}
+\newcommand{\blind}{1}
 
 % DON'T change margins - should be 1 inch all around.
 \addtolength{\oddsidemargin}{-.5in}%
@@ -24,6 +22,7 @@
 %% load any required packages here
 
 
+% Pandoc syntax highlighting
 \usepackage{color}
 \usepackage{fancyvrb}
 \newcommand{\VerbBar}{|}
@@ -65,7 +64,11 @@
 \newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
 \newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
 
-% Pandoc citation processing
+% tightlist command for lists without linebreak
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+
 
 \usepackage{booktabs}
 \usepackage{longtable}
@@ -166,10 +169,10 @@ Given the emergence and growing availability of intensive longitudinal
 data (IDL), ecological momentary assessments (EMA), and other sources of
 information such as social media activity or phone use, there is
 increasing need to analyze time series, and isolate effects within the
-phenomenon of interest (McNeish et al.~2021; Ram et al.~2020). This
-paper provides an overview of two packages in R that offer specific
-functions to detect and measure intervention effects using both
-inductive and abductive approaches: \textsf{CausalImpact}
+phenomenon of interest \citep{McNeish, ram_screenomics_2020}. This paper
+provides an overview of two packages in R that offer specific functions
+to detect and measure intervention effects using both inductive and
+abductive approaches: \textsf{CausalImpact}
 \citep{brodersen2015inferring} and \textsf{tsoutlier} packages
 \citep{tsoutliers}. In the following software review, we first describe
 the illustrative data used in this paper, then provide sample code and
@@ -181,10 +184,46 @@ from both functions.
 \section{Illustrative Data}\label{illustrative-data}}
 
 We will use monthly death counts from the Puerto Rico Vital Statistics
-System to illustrate the functionality of the tsoutliers and
+System (PRVSS) to illustrate the functionality of the
 \textsf{CausalImpact} and \textsf{tsoutliers} packages. The data contain
-monthly aggregates of deaths for Puerto Rico between 2010 and 2018.
-These data have been used in previous \ldots{}
+monthly aggregates of deaths for Puerto Rico between 2010 and 2018. Data
+from the PRVSS has been used in many articles to estimate the excess
+deaths following Hurricanes Irma and María
+\citep{rivera_estimating_2018, sandberg2019all, santos2018use, SANTOSBURGOA2018e478, CruzCano}.
+The original dataset includes individual records of each death occurring
+in Puerto Rico between 2010 and 2018, with all the information collected
+through the death certificate. The dataset employed in this Software
+Review consists of aggregates for total deaths for every month between
+March 2010 and December 2018 (Deaths), with corresponding month and year
+identifiers. The dataset also includes a variable indicating the number
+of observation each month represents (range = 1 - 106). This dataset
+contains a total of 261,959 deaths distributed across 106 months
+covering the month in which the 2010 census was collected (March 2010)
+and the end of the year after Hurricanes Irma and María (December 2018).
+Population estimates for these years are produced using the vital
+statistics method and are in line with the population decline observed
+in Puerto Rico 2010-onward \citep{santoslozada_puerto_2020}.
+\textbf{\autoref{pr-table}} contains the first and last five
+observations contained in the dataset.
+
+\begin{longtable}[t]{rlrll}
+\caption{\label{tab:unnamed-chunk-3}\textbf{Data set of monthly deaths in Puerto Rico, March 2010 to December 2018} \label{pr-table}}\\
+\toprule
+Obs & Month & Year & Deaths & Population Estimate\\
+\midrule
+1 & March & 2010 & 2,495 & 3,725,789\\
+2 & April & 2010 & 2,298 & 3,713,097\\
+3 & May & 2010 & 2,449 & 3,676,496\\
+4 & June & 2010 & 2,405 & 3,683,013\\
+5 & July & 2010 & 2,478 & 3,704,510\\
+\addlinespace
+102 & August & 2018 & 2,341 & 3,095,640\\
+103 & September & 2018 & 2,233 & 3,079,240\\
+104 & October & 2018 & 2,286 & 3,079,429\\
+105 & November & 2018 & 2,353 & 3,082,268\\
+106 & December & 2018 & 2,636 & 3,116,097\\
+\bottomrule
+\end{longtable}
 
 \hypertarget{r-packages-for-detection-and-measuring-intervetions}{%
 \section{R Packages for Detection and Measuring
@@ -202,15 +241,14 @@ computes a causal impact as well as its duration using a pre- and
 post-intervention approach. \textsf{CausalImpact} assumes that a time
 series can be explained by a set of covariates which are not affected by
 the intervention being measured. We use the previously introduced
-dataset to demonstrate three of the multiple ways this package can be
+dataset to demonstrate two of the multiple ways this package can be
 used. First, we rely on an autoregressive model that uses the time
-series past information to forecast a potential counterfactual. Second,
-we rely on the autoregressive model but controlling for population size.
-Third, we rely on the death counts from a state that was not affected by
-Hurricane María to produce the counterfactual model.
+series past information to forecast a potential counterfactual and
+second, we rely on the autoregressive model but controlling for
+population size.
 
 Usage of \textsf{CausalImpact()} is shown below with all arguments set
-to the default:
+to the default.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -248,14 +286,13 @@ The first and second line create a time series for the monthly deaths
 and corresponding population estimates. The third lines create a
 univariate time series object of just the deaths and the fourth line
 creates a multivariate time series of both the deaths and population
-estimates. both time series. The fifth and sixth lines are numeric
-values defining the pre- and post-intervention period; these values are
-required to perform the most basic analysis using
-\texttt{CausalImpact()}. How are the pre- and post-intervention period
-defined? It comes from our understanding of the data and determining
-when the intervention occurred. In our case, the data contains
-observations for every month between \textbf{2000 and 20XX}. In this
-data arrangement September 2017 is the 91st observation. Thus, the
+estimates. The fifth and sixth lines are numeric values defining the
+pre- and post-intervention period; these values are required to perform
+the most basic analysis using \texttt{CausalImpact()}. How are the pre-
+and post-intervention period defined? It comes from our understanding of
+the data and determining when the intervention occurred. In our case,
+the data contains observations for every month between 2000 and 2018. In
+this data arrangement, September 2017 is the 91st observation. Thus, the
 pre-intervention period is the period between observation 1 and 90, and
 the post-intervention period is anything after that period (91-onward).
 This is all the data manipulation and specifications we require to
@@ -286,12 +323,22 @@ object called \texttt{impact} for the model that does not consider
 population size and \texttt{impact2} for the one with controls for
 population size. The function includes the three main arguments
 described above. The results can be explored in three ways: (1) by
-examining the raw output, (2) by asking R to produce a brief report, and
-(3) by producing a visualization of the intervention effect. The second
-line in the previous chunk of code provides the Actual and Predicted
-averages and cumulative counts, and describes the absolute and relative
-effect of the intervention. These pieces of information are accompanied
-by their corresponding measures of error and 95\% intervals.
+examining the raw output as in \textbf{\autoref{impact}}, (2) by asking
+R to produce a brief report (\textbf{\autoref{report}}), and (3) by
+producing a visualization of the intervention effect
+(\textbf{\autoref{plots}}).
+
+By simply calling the \texttt{impact} object which contains the output
+from the \texttt{CausalImpact()} function, the package provides the
+Actual and Predicted averages and cumulative counts, and shows the
+absolute and relative effect of the intervention. These pieces of
+information are accompanied by their corresponding measures of error and
+95\% intervals. Here we can see the absolute cumulative effect of
+Hurricane María is 1,155 deaths with a p-value of 0.04805.
+
+\begin{figure}
+\includegraphics[width=1\linewidth]{../MainDocument/Capture} \caption{\textbf{Raw output from the object created by the CausalImpact() function.}\label{impact}}\label{fig:unnamed-chunk-8}
+\end{figure}
 
 By using the \texttt{summary(impact,\ "report")} function, we request a
 narrative summary of the analysis. Note, that simply asking for a
@@ -307,19 +354,18 @@ and what would have occurred absent the intervention. Section 3
 transforms the results described in Section 2 into relative terms, in
 this case the percent increase observed in the death counts and the
 corresponding 95\% interval. Section 4 summarizes the effect of the
-intervention, indicates whether there is a significant effect and asks
+intervention, indicates whether there is a significant effect, and asks
 the researcher to compare the absolute effect with the goal of the
-intervention. Section 5 described the probability that the effect
+intervention. Section 5 describes the probability that the effect
 happened at random with a corresponding p-value. The concluding sentence
 asserts whether the causal effect can be considered statistically
 significant. The results presented in this report indicate that
 Hurricane María constituted a significant intervention regarding the
 number of deaths and that it is highly unlikely that this occurred by
-chance. The fifth line of code produces the \texttt{CausalImpact}
-analysis incorporating population size as a covariate.
+chance.
 
 \begin{figure}
-\includegraphics[width=1\linewidth]{../MainDocument/Picture1} \caption{\textbf{CausalImpact narrative report resulting from the assessment of mortality following Hurricane María.}\label{report}}\label{fig:unnamed-chunk-6}
+\includegraphics[width=1\linewidth]{../MainDocument/Picture1} \caption{\textbf{CausalImpact narrative report resulting from the assessment of mortality following Hurricane María.}\label{report}}\label{fig:unnamed-chunk-9}
 \end{figure}
 
 \begin{Shaded}
@@ -356,15 +402,15 @@ dashed-vertical line in each of the panels. Both the pointwise and
 cumulative estimates are accompanied by corresponding 95\% intervals.
 The visualization indicates that mortality on and after September 2017
 exceeded the expected range and that this effect was sustained for a
-couple of months after Hurricane María. In Figure 3, we present the
-resulting plots for both impact analyses described above. We combined
-the basic plot function with functions from the \texttt{ggplot2} and
-\texttt{ggpubr} packages. These figures were produced using the
-following code:
+couple of months after Hurricane María. In \textbf{\autoref{plots}}, we
+present the resulting plots for both impact analyses described above. We
+combined the basic plot function with functions from the
+\texttt{ggplot2} and \texttt{ggpubr} packages. These figures were
+produced using the following code:
 
 \begin{figure}
 \centering
-\includegraphics{MainDocument_files/figure-latex/unnamed-chunk-8-1.pdf}
+\includegraphics{MainDocument_files/figure-latex/unnamed-chunk-11-1.pdf}
 \caption{\textbf{Visualization of CausalImpact results without and with controls for population size as univariate and multivariate time series.}
 \label{plots}}
 \end{figure}
@@ -388,7 +434,7 @@ anomalous behavior and the cause of the effect is reasoned ex-post.
 
 Time series are affected by exogenous factors and the effects are felt
 differently across the phenomenon of our interest. Aside from detecting
-outliers within out time series, the \texttt{tso()} function offers
+outliers within a time series, the \texttt{tso()} function offers
 insights about the effect being captured when an outlier is detected. By
 default, three types of outliers detected are:
 
@@ -402,7 +448,7 @@ default, three types of outliers detected are:
   Level shifts (LS) - a change in the average levels with the
   observations following the outlier shifting accordingly. This change
   may be due to seasonality, but has the distinctive feature of the
-  change being permanent, and
+  change being more permanent, and
 \item
   Temporary or transient changes (TC) - similar to LS but the effect of
   the outlier reduces over subsequent observations. Eventually, the
@@ -445,8 +491,8 @@ we explore whether the results change when we control for population
 size. First, the \texttt{y} argument is the time series of interest and
 must be a time series object. Rarely, R will import time series data as
 a time series object, rather than a dataframe, so most analyses require
-simple data processing convert the data into a format that compatible
-with \texttt{tso()}. For analyzing a multivariate time series using the
+simple data processing to convert the data into a format compatible with
+\texttt{tso()}. For analyzing a multivariate time series using the
 \texttt{xreg} argument, the dataformat is slightly different and must be
 in the form of a matrix or array. After importing the data, we transform
 the information into a time series using the \texttt{ts()} function
@@ -463,9 +509,9 @@ The first line creates a time series for the monthly deaths from 2010
 until 2018 and the second one creates a time series object for the
 corresponding monthly population estimates. This information was
 contained within the dataset we imported in the illustrative data
-section (see Table 1). This is all the data manipulation required to
-have the data in a format that is familiar to the \texttt{tso()}
-function.
+section (see \textbf{\autoref{pr-table}}). This is all the data
+manipulation required to have the data in a format that is familiar to
+the \texttt{tso()} function.
 
 The essential arguments for \texttt{tso()} are the time series of
 interest for detecting outliers, the type of outliers to detect, and
@@ -489,14 +535,14 @@ objects called \texttt{analysis} for the univariate time series and
 analyses is the inclusion of population estimates to account for changes
 in population size. We access the results by: (1) looking at the output
 in table form (\textbf{\autoref{tso-table}}) or (2) through data
-visualization (Figure 1). To examine the output table one must simply
-write the name of the object where the results are stored in the
-console. The output includes the type of outlier detected, the
-observation id, the estimated excess and the t-statistic associated with
-the outlier.
+visualization (\textbf{\autoref{tso-plot}}). To examine the output table
+one must simply write the name of the object where the results are
+stored in the console. The output includes the type of outlier detected,
+the observation id, the estimated excess, and the t-statistic associated
+with the outlier.
 
 \begin{longtable}[t]{llrrrr}
-\caption{\label{tab:unnamed-chunk-12}\textbf{Outlier detection for monthly deaths for Puerto Rico, 2010-2018 without (univariate) and with (multivariate) controls for population size.} \label{tso-table}}\\
+\caption{\label{tab:unnamed-chunk-15}\textbf{Outlier detection for monthly deaths for Puerto Rico, 2010-2018 without (univariate) and with (multivariate) controls for population size.} 'type' describes the type of outlier, 'ind' refers to the time index of the detected outlier, 'time' refers to the specified time, 'coefhat' is the size of the detected outlier, and 'tstat' is the critical value of the detected outlier. \label{tso-table}}\\
 \toprule
 Analysis & type & ind & time & coefhat & tstat\\
 \midrule
@@ -507,7 +553,7 @@ Multivariate (population size) & TC & 91 & 91 & 682.438 & 5.16327\\
 
 In both instances, the model identified September 2017 (time indexed
 value 91) as a temporary change (TC) outlier. This tells us that the
-number of deaths detected in the month of Hurricane Maria exceeded the
+number of deaths detected in the month of Hurricane María exceeded the
 expected levels and that this effect was not constrained to that month,
 it continued affecting Puerto Rico for subsequent months until the point
 the number of deaths returned to expected levels. In this case,
@@ -538,12 +584,12 @@ We simply ask R to plot the object where the output is stored:
 
 \begin{figure}
 \centering
-\includegraphics{MainDocument_files/figure-latex/unnamed-chunk-13-1.pdf}
+\includegraphics{MainDocument_files/figure-latex/unnamed-chunk-16-1.pdf}
 \caption{\textbf{Plot of the tso function that considers population size through the xreg argument.}
 Detecting one outlier in September 2017 (red dot) with a diminishing
 effect in the following months until the time series converges towards
 the expected levels based on pre-Hurricane María patterns represented in
-the outlier effects panel.\} \label{tso-plot}}
+the outlier effects panel. \label{tso-plot}}
 \end{figure}
 
 \hypertarget{comparison-of-the-tsoutlier-and-causlimpact-packages}{%
@@ -556,29 +602,28 @@ deaths in Puerto Rico have estimated the excess deaths in September 2017
 to be: 574 (95\% C.I. 515-630), 449 (95\% C.I. 377-527), and 459 (95\%
 C.I. 425-293)
 \citep{rivera_estimating_2018, santos2018differential, santos2018use}.
-Cumulative estimates of excess death range from XX to XXX {[}CITES{]}.
 The results derived from both the \texttt{CausalImpact} and
 \texttt{tsoutliers} packages are consistent or close to these estimates.
 Furthermore, without programming in September 2017 as the date of the
 hurricane, the \texttt{tso} function correctly identifies September 2017
 as an outlier when compared to the expected counts.
 
-While the results of both functions are similar to eachother and to
+While the results of both functions are similar to each other and to
 published results, the process and formulation of the approach differ.
 As stated above, the packages utilize different logical approaches to
 identifying and estimating causal effects. \texttt{CausalImpact} uses a
 more classical, inductive approach to identify effects and if one knows
 the date of an intervention, the \texttt{CausalImpact} package might be
 a reasonable choice. However, sometimes the date of an intervention is
-unknown. Take for instance the COVID-19 pandemic, is the onset of the
+unknown. Take for instance the COVID-19 pandemic, the onset of the
 pandemic is not knowable for all states or countries. If one were to try
 and identify the excess mortality of the pandemic, the
 \texttt{tsoutliers} package might be a more reasonable choice. Both
-functions have some form of significance teesting. \texttt{tso()}
+functions have some form of significance testing. \texttt{tso()}
 provides a t-statistic that corresponds to the detected outlier while
 the \texttt{CausalImpact} function provides a p-value corresponding to a
 Bayesian-one sided tail area probability. Finally, both functions
-provided a way of visually examining the time series and the resulting
+provide a way of visually examining the time series and the resulting
 analysis. Both methods allow us to conclude that the Hurricane María
 caused deaths in excess of expected levels as established in the extant
 literature \citep{sandberg2019all}.
@@ -598,10 +643,10 @@ effect are desired and both packages are compatible with univariate and
 multivariate time series. For \texttt{tso()} multivariate times series
 are included by specifying the \texttt{xreg} argument. To incorporate
 controls within the \texttt{CausalImpact} approach, they need to be
-included them in the data matrix. This matrix should be structured in a
-way that the first column corresponds to the time series of interest,
-and the subsequent columns are the controls. Despite slight differences
-in both mathematical formulation and empirical approach, both methods
+included in the data matrix. This matrix should be structured in a way
+that the first column corresponds to the time series of interest, and
+the subsequent columns are the controls. Despite slight differences in
+both mathematical formulation and empirical approach, both methods
 produce similar results. Only the \texttt{CausalImpact} approach
 requires additional information about the timing of an intervention, the
 \texttt{tsoutliers} package searches for the intervention. This is a
@@ -611,8 +656,8 @@ direct result of the objective of each function, while
 effect when knowledge of the specific timing of an intervention is
 available.
 
-The \texttt{tso()} function does not calculae the cumulative effect of a
-detected outlier but this can be remedied by with basic arithmetic. To
+The \texttt{tso()} function does not calculate the cumulative effect of
+a detected outlier but this can be remedied with basic arithmetic. To
 measure the cumulative effect, we subtract the expected values from the
 observed ones after the outlier is detected. The summation of these
 differences is the cumulative effect of the intervention. While simple
@@ -638,9 +683,9 @@ provides a simple, yet elegant visualization that allows following the
 effect across time. In the case of the \texttt{CausalImpact()}
 visualization, the plot function produces three panels, modifiable with
 code. The first panel, labeled original, is similar to the upper panel
-produced with tso() and it shows the time series and the expected
-values. The second panel is similar to the lower panel produced with
-\texttt{tso()} and it shows the effect estimates for each
+produced with \texttt{tso()} and it shows the time series and the
+expected values. The second panel is similar to the lower panel produced
+with \texttt{tso()} and it shows the effect estimates for each
 post-intervention observation. The third panel is unique to
 \texttt{CausalImpact()} and consists of the cumulative effect of the
 intervention. The key distinction between both visualizations is that
@@ -655,19 +700,20 @@ visualization, which can be useful when researchers are interested in
 producing publication-ready figures.
 
 In closing, both packages are similar in that they produce consistent
-estimates of excess mortality following the intervention. However, they
-offer different insights into the intervention that users should be
-aware of. The \texttt{tsoutliers} package is better suited for analyses
-where we are interested in detecting and understanding intervention
-effects within a time series. On the other hand, the
-\texttt{CausalImpact} package is better suited for analyses where the
-timing of the intervention is known. While other approaches exist, we
-see a fruitful and promising avenue for the use of both functions to
-detect and measure intervention effects when time series are available.
-Both packages have their strengths and weaknesses, but they can be used
-to perform both inductive and abductive assessments of interventions.
+estimates following an intervention. However, they offer different
+insights into the intervention that users should be aware of. The
+\texttt{tsoutliers} package is better suited for analyses where we are
+interested in \emph{detecting} potential intervention effects within a
+time series. On the other hand, the \texttt{CausalImpact} package is
+better suited for analyses where the timing of the intervention is
+known. While other approaches exist, we see a fruitful and promising
+avenue for the use of both functions to detect and measure intervention
+effects when time series are available. Both packages have their
+strengths and weaknesses, but they can be used to perform both inductive
+and abductive assessments of interventions.
 
 \bibliographystyle{agsm}
 \bibliography{bibliography.bib}
+
 
 \end{document}
